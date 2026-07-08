@@ -321,12 +321,13 @@ public final class TeamManager {
             return;
         }
         int clamped = radius == 5 || radius == 10 || radius == 20 || radius == 30 ? radius : 10;
+        double maxDistSqr = (double) clamped * clamped; // compare squared distances to skip a sqrt per player
         List<String> found = new ArrayList<>();
         for (ServerPlayer other : leader.serverLevel().players()) {
             if (other == leader || !teamIdOf(other).isEmpty()) {
                 continue; // players already in a team are not listed
             }
-            if (other.distanceTo(leader) <= clamped) {
+            if (other.distanceToSqr(leader) <= maxDistSqr) {
                 found.add(other.getGameProfile().getName());
             }
         }

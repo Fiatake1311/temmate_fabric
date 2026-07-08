@@ -2,7 +2,9 @@ package com.teammate.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.teammate.TeammateMod;
+import com.teammate.client.gui.TeamScreen;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -11,6 +13,7 @@ import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import org.lwjgl.glfw.GLFW;
 
 @Mod(value = TeammateMod.MODID, dist = Dist.CLIENT)
@@ -19,14 +22,29 @@ public class TeammateClient {
     public static final KeyMapping PING_KEY = new KeyMapping("key.teammate.ping",
             KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_P, "key.categories.teammate");
 
+    /** Default 'G': opens the team menu directly, no item required. */
+    public static final KeyMapping OPEN_TEAM_MENU_KEY = new KeyMapping("key.teammate.open_menu",
+            KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.teammate");
+
     public TeammateClient(IEventBus modEventBus) {
         modEventBus.addListener(TeammateClient::onRegisterKeyMappings);
         modEventBus.addListener(TeammateClient::onRegisterGuiLayers);
         NeoForge.EVENT_BUS.register(ClientEvents.class);
+        NeoForge.EVENT_BUS.addListener(TeammateClient::onClientTick);
+    }
+
+    private static void onClientTick(ClientTickEvent.Post event) {
+        Minecraft mc = Minecraft.getInstance();
+        while (OPEN_TEAM_MENU_KEY.consumeClick()) {
+            if (mc.player != null && mc.screen == null) {
+                mc.setScreen(new TeamScreen());
+            }
+        }
     }
 
     private static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(PING_KEY);
+        event.register(OPEN_TEAM_MENU_KEY);
     }
 
     private static void onRegisterGuiLayers(RegisterGuiLayersEvent event) {

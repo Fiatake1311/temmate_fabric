@@ -51,6 +51,8 @@ public class TeamScreen extends Screen {
     private static final int MEMBER_ROW_H = 16;
     private static final int SCAN_ROW_H = 15;
     private static final int[] SCAN_RADII = {5, 10, 20, 30};
+    /** Auto re-scan cadence while the Search tab is open: once every 1.5s (30 ticks). */
+    private static final int SCAN_REFRESH_INTERVAL = 30;
 
     private enum Tab {
         OVERVIEW("Overview"),
@@ -91,6 +93,8 @@ public class TeamScreen extends Screen {
     private int top;
     private int memberScroll;
     private long disbandArmedUntil;
+    /** Ticks until the next automatic proximity scan; survives widget rebuilds so results don't loop-refresh. */
+    private int ticksUntilScan;
     private final List<String> suggestions = new ArrayList<>();
 
     private int selectedColor = ChatFormatting.WHITE.getId();
@@ -198,13 +202,12 @@ public class TeamScreen extends Screen {
             if (radiusButton != null) {
                 radiusButton.setMessage(radiusLabel());
             }
+            requestScan(); // new radius -> refresh results immediately
         }));
         radiusButton.setTooltip(Tooltip.create(Component.literal("Scan radius: 5 → 10 → 20 → 30 blocks")));
 
         addRenderableWidget(new MinimalButton(left + 114, y + 66, 140, 16,
-                Component.literal("Scan Nearby Players"), Accent.NEUTRAL,
-                button -> PacketDistributor.sendToServer(
-                        new TeamPayloads.PacketChangeRadius(SCAN_RADII[scanRadiusIndex]))));
+                Component.literal("Refresh List"), Accent.NEUTRAL, button -> requestScan()));
 
         // one invite button per scan result row
         List<String> results = ClientTeamData.scanResults;
@@ -286,6 +289,30 @@ public class TeamScreen extends Screen {
     }
 
     // ------------------------------------------------------------------ sync hooks
+
+    /**
+     * Client-side throttle: while the Search tab is open, re-request the proximity
+     * scan once every {@link #SCAN_REFRESH_INTERVAL} ticks so the list stays fresh
+     * as players move, without flooding the server. The counter lives on the screen
+     * instance (not reset by {@code init()}), so incoming results rebuilding the
+     * widgets can't collapse the interval into a per-tick scan loop.
+     */
+    @Override
+    public void tick() {
+        super.tick();
+        if (currentTab != Tab.SEARCH || !ClientTeamData.inTeam || !ClientTeamData.isLeader) {
+            return;
+        }
+        if (--ticksUntilScan <= 0) {
+            requestScan();
+        }
+    }
+
+    /** Sends a proximity scan at the current radius and re-arms the auto-refresh throttle. */
+    private void requestScan() {
+        ticksUntilScan = SCAN_REFRESH_INTERVAL;
+        PacketDistributor.sendToServer(new TeamPayloads.PacketChangeRadius(SCAN_RADII[scanRadiusIndex]));
+    }
 
     /** Called by ClientTeamData when a TeamState sync arrives while this screen is open. */
     public void onStateSync() {
@@ -446,6 +473,8 @@ public class TeamScreen extends Screen {
         int maxScroll = Math.max(0, members.size() - visible);
         memberScroll = Mth.clamp(memberScroll, 0, maxScroll);
 
+        // clip rows to the list window so a partially-scrolled row can't bleed past the panel
+        guiGraphics.enableScissor(left, listY - 2, left + PANEL_W, listY + visible * MEMBER_ROW_H);
         for (int row = 0; row < visible; row++) {
             int index = memberScroll + row;
             if (index >= members.size()) {
@@ -476,6 +505,7 @@ public class TeamScreen extends Screen {
                 guiGraphics.drawString(font, "×", kickX(), rowY, hovered ? CORAL : MUTED, false);
             }
         }
+        guiGraphics.disableScissor();
         if (maxScroll > 0) {
             guiGraphics.drawString(font, memberScroll + 1 + "–" + Math.min(members.size(), memberScroll + visible)
                     + " / " + members.size(), left + PANEL_W - 60, y + 2, MUTED, false);
