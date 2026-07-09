@@ -17,15 +17,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Downloads the team icon (PNG) from the leader-provided URL on a background
- * thread and registers it as a dynamic texture. Results are cached per URL;
- * failing URLs are only tried once per session.
+ * Downloads the team icon (PNG, up to 512x512) from the leader-provided URL on a
+ * background thread and registers it as a dynamic texture. Results are cached per
+ * URL; failing URLs are only tried once per session.
  */
 public final class TeamIconManager {
     public record Icon(ResourceLocation location, int width, int height) {
     }
 
-    private static final int MAX_BYTES = 1024 * 1024; // 1 MiB is plenty for a 16x16 icon
+    private static final int MAX_BYTES = 8 * 1024 * 1024; // enough headroom for a 512x512 PNG
+    private static final int MAX_DIMENSION = 512;
     private static final Map<String, Icon> LOADED = new ConcurrentHashMap<>();
     private static final Set<String> IN_FLIGHT = ConcurrentHashMap.newKeySet();
     private static final Set<String> FAILED = ConcurrentHashMap.newKeySet();
@@ -61,8 +62,17 @@ public final class TeamIconManager {
             connection.setReadTimeout(5000);
             connection.setRequestProperty("User-Agent", "Minecraft-Teammate-Mod");
             try (InputStream in = connection.getInputStream()) {
-                byte[] bytes = in.readNBytes(MAX_BYTES);
+                // read one byte past the cap so an oversized file is detected instead of
+                // silently truncated (which would otherwise hand NativeImage a corrupt PNG)
+                byte[] bytes = in.readNBytes(MAX_BYTES + 1);
+                if (bytes.length > MAX_BYTES) {
+                    throw new IllegalArgumentException("file exceeds " + MAX_BYTES + " bytes");
+                }
                 NativeImage image = NativeImage.read(bytes);
+                if (image.getWidth() > MAX_DIMENSION || image.getHeight() > MAX_DIMENSION) {
+                    image.close();
+                    throw new IllegalArgumentException("image exceeds " + MAX_DIMENSION + "x" + MAX_DIMENSION);
+                }
                 Minecraft.getInstance().execute(() -> {
                     ResourceLocation location = ResourceLocation.fromNamespaceAndPath(TeammateMod.MODID,
                             "team_icon_" + NEXT_ID.getAndIncrement());

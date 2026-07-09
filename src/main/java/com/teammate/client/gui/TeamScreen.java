@@ -51,8 +51,8 @@ public class TeamScreen extends Screen {
     private static final int MEMBER_ROW_H = 16;
     private static final int SCAN_ROW_H = 15;
     private static final int[] SCAN_RADII = {5, 10, 20, 30};
-    /** Auto re-scan cadence while the Search tab is open: once every 1.5s (30 ticks). */
-    private static final int SCAN_REFRESH_INTERVAL = 30;
+    /** Anti-spam debounce: minimum time between manual scan requests, in milliseconds. */
+    private static final long SCAN_DEBOUNCE_MS = 2000L;
 
     private enum Tab {
         OVERVIEW("Overview"),
@@ -93,8 +93,8 @@ public class TeamScreen extends Screen {
     private int top;
     private int memberScroll;
     private long disbandArmedUntil;
-    /** Ticks until the next automatic proximity scan; survives widget rebuilds so results don't loop-refresh. */
-    private int ticksUntilScan;
+    /** Timestamp of the last manual scan request; survives widget rebuilds so the debounce can't be reset by spam. */
+    private long lastScanRequestTime;
     private final List<String> suggestions = new ArrayList<>();
 
     private int selectedColor = ChatFormatting.WHITE.getId();
@@ -202,12 +202,13 @@ public class TeamScreen extends Screen {
             if (radiusButton != null) {
                 radiusButton.setMessage(radiusLabel());
             }
-            requestScan(); // new radius -> refresh results immediately
+            // radius change alone does not trigger a scan: the player must press
+            // SEARCH NEARBY PLAYERS explicitly, keeping this a purely on-demand action
         }));
         radiusButton.setTooltip(Tooltip.create(Component.literal("Scan radius: 5 → 10 → 20 → 30 blocks")));
 
         addRenderableWidget(new MinimalButton(left + 114, y + 66, 140, 16,
-                Component.literal("Refresh List"), Accent.NEUTRAL, button -> requestScan()));
+                Component.literal("SEARCH NEARBY PLAYERS"), Accent.NEUTRAL, button -> requestScan()));
 
         // one invite button per scan result row
         List<String> results = ClientTeamData.scanResults;
@@ -253,7 +254,7 @@ public class TeamScreen extends Screen {
             iconBox.setMaxLength(255);
             iconBox.setBordered(false);
             iconBox.setTextColor(0xFAFAFA);
-            iconBox.setHint(Component.literal("https://... (16x16 PNG)").withStyle(ChatFormatting.DARK_GRAY));
+            iconBox.setHint(Component.literal("https://... (up to 512x512 PNG)").withStyle(ChatFormatting.DARK_GRAY));
             iconBox.setValue(savedIcon != null ? savedIcon : ClientTeamData.iconUrl);
             iconBox.setResponder(value -> savedIcon = value);
             addRenderableWidget(iconBox);
@@ -291,26 +292,25 @@ public class TeamScreen extends Screen {
     // ------------------------------------------------------------------ sync hooks
 
     /**
-     * Client-side throttle: while the Search tab is open, re-request the proximity
-     * scan once every {@link #SCAN_REFRESH_INTERVAL} ticks so the list stays fresh
-     * as players move, without flooding the server. The counter lives on the screen
-     * instance (not reset by {@code init()}), so incoming results rebuilding the
-     * widgets can't collapse the interval into a per-tick scan loop.
+     * Zero background tick scanning: no polling, no automatic networking. The scan
+     * only ever runs in response to an explicit SEARCH NEARBY PLAYERS button press.
      */
     @Override
     public void tick() {
         super.tick();
-        if (currentTab != Tab.SEARCH || !ClientTeamData.inTeam || !ClientTeamData.isLeader) {
-            return;
-        }
-        if (--ticksUntilScan <= 0) {
-            requestScan();
-        }
     }
 
-    /** Sends a proximity scan at the current radius and re-arms the auto-refresh throttle. */
+    /**
+     * Sends a proximity scan at the current radius, on demand only.
+     * Anti-spam debounce guard: hard-coded 2-second timeout prevents click-spam
+     * (macros included) from flooding the server with scan requests.
+     */
     private void requestScan() {
-        ticksUntilScan = SCAN_REFRESH_INTERVAL;
+        long now = System.currentTimeMillis();
+        if (now - lastScanRequestTime < SCAN_DEBOUNCE_MS) {
+            return;
+        }
+        lastScanRequestTime = now;
         PacketDistributor.sendToServer(new TeamPayloads.PacketChangeRadius(SCAN_RADII[scanRadiusIndex]));
     }
 
