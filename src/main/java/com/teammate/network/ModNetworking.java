@@ -29,6 +29,8 @@ public final class ModNetworking {
                 ServerPayloadHandler::handleSetTeamIcon);
         registrar.playToServer(TeamPayloads.Ping.TYPE, TeamPayloads.Ping.STREAM_CODEC,
                 ServerPayloadHandler::handlePing);
+        registrar.playToServer(TeamPayloads.RequestOpenMenu.TYPE, TeamPayloads.RequestOpenMenu.STREAM_CODEC,
+                ServerPayloadHandler::handleRequestOpenMenu);
 
         // Team Banner toggle: one byte on the wire; client -> server stores it,
         // server -> client echoes the persisted state to the owner

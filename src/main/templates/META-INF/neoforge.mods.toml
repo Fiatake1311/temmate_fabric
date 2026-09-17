@@ -39,14 +39,20 @@ displayName="${mod_name}" #mandatory
 #logoFile="examplemod.png" #optional
 
 # A text field displayed in the mod UI
-#credits="" #optional
+credits="Created by FIATAKE and Fragment Star. All Rights Reserved (ARR)." #optional
 
 # The authors of the mod, displayed in the mod UI (optional)
-#authors=""
+authors="${mod_authors}"
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''
 Advanced Team Combat: team creation with a dark-themed GUI, custom team icons, name tags, ally glow, team HUD, ping waypoints and team chat.
+
+Copyright (c) FIATAKE and Fragment Star. All Rights Reserved (ARR).
+This mod and its source code are proprietary. Reverse engineering, decompiling,
+disassembling, extracting, modifying, or redistributing this mod or any part of
+it is strictly prohibited under all circumstances without the express written
+permission of the authors.
 '''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.

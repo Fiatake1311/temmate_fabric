@@ -1,5 +1,6 @@
 {
-  "key.categories.teammate": "Thai Occult Covenant",
+  "key.categories.teammate": "TeammateMod",
   "key.teammate.ping": "Astral Ping",
-  "key.teammate.open_menu": "Open Team Menu"
+  "key.teammate.open_menu": "Open Team Menu",
+  "key.teammate.toggle_hud": "Toggle Team HUD"
 }

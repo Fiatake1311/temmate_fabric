@@ -164,6 +164,23 @@ public final class TeamPayloads {
         }
     }
 
+    /**
+     * Sent when the player presses the "Open Team Menu" key. The server decides
+     * whether to honour it: if an operator disabled the menu key via
+     * {@code /teammate off}, it is refused (the Team Tool item still works, since
+     * that path opens the menu server-side without this packet).
+     */
+    public record RequestOpenMenu() implements CustomPacketPayload {
+        public static final Type<RequestOpenMenu> TYPE = new Type<>(id("request_open_menu"));
+        public static final StreamCodec<ByteBuf, RequestOpenMenu> STREAM_CODEC =
+                StreamCodec.unit(new RequestOpenMenu());
+
+        @Override
+        public Type<RequestOpenMenu> type() {
+            return TYPE;
+        }
+    }
+
     public record Ping(BlockPos pos) implements CustomPacketPayload {
         public static final Type<Ping> TYPE = new Type<>(id("ping"));
         public static final StreamCodec<ByteBuf, Ping> STREAM_CODEC = StreamCodec.composite(

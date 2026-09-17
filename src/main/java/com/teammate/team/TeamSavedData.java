@@ -28,8 +28,24 @@ public class TeamSavedData extends SavedData {
 
     private final Map<String, TeamInfo> teams = new LinkedHashMap<>();
 
+    /**
+     * Server-wide switch (toggled by {@code /teammate on|off}): when false, the
+     * "Open Team Menu" key is refused for everyone and players must use a Team Tool
+     * item instead. Persists across restarts.
+     */
+    private boolean menuKeyEnabled = true;
+
     public static TeamSavedData get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(FACTORY, "teammate_teams");
+    }
+
+    public boolean isMenuKeyEnabled() {
+        return menuKeyEnabled;
+    }
+
+    public void setMenuKeyEnabled(boolean enabled) {
+        this.menuKeyEnabled = enabled;
+        setDirty();
     }
 
     @Nullable
@@ -58,6 +74,8 @@ public class TeamSavedData extends SavedData {
 
     public static TeamSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
         TeamSavedData data = new TeamSavedData();
+        // default to enabled for worlds saved before this flag existed
+        data.menuKeyEnabled = !tag.contains("MenuKeyEnabled") || tag.getBoolean("MenuKeyEnabled");
         ListTag list = tag.getList("Teams", Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++) {
             CompoundTag teamTag = list.getCompound(i);
@@ -84,6 +102,7 @@ public class TeamSavedData extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+        tag.putBoolean("MenuKeyEnabled", menuKeyEnabled);
         ListTag list = new ListTag();
         for (TeamInfo info : teams.values()) {
             CompoundTag teamTag = new CompoundTag();

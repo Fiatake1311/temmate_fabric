@@ -4,10 +4,13 @@ import com.teammate.ModAttachments;
 import com.teammate.network.TeamPayloads;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerScoreboard;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.scores.PlayerTeam;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -31,6 +34,8 @@ public final class TeamManager {
 
     private static final String TEAM_PREFIX = "tm_";
     private static final long PING_LIFETIME_MS = 10_000L;
+    /** CustomData marker flagging an item as a "Team Tool" (right-click opens the menu). */
+    private static final String TOOL_MARKER = "TeammateTool";
 
     /** invitee uuid -> team id. In-memory on purpose: invites do not survive a restart. */
     private static final Map<UUID, String> PENDING_INVITES = new HashMap<>();
@@ -432,6 +437,66 @@ public final class TeamManager {
 
     public static void syncPlayer(ServerPlayer player, boolean openScreen) {
         PacketDistributor.sendToPlayer(player, buildState(player, openScreen));
+    }
+
+    // ------------------------------------------------------------------ open menu / team tool
+
+    /**
+     * Honours the "Open Team Menu" key. Refused when an operator has disabled the
+     * menu key via {@code /teammate off}; the Team Tool item bypasses this by
+     * calling {@link #openMenu(ServerPlayer)} directly.
+     */
+    public static void requestOpenMenu(ServerPlayer player) {
+        if (!TeamSavedData.get(player.server).isMenuKeyEnabled()) {
+            error(player, "The team menu key is disabled here. Use a Team Tool item instead.");
+            return;
+        }
+        openMenu(player);
+    }
+
+    /** Opens the team menu on the player's client (sends a state sync with openScreen=true). */
+    public static void openMenu(ServerPlayer player) {
+        syncPlayer(player, true);
+    }
+
+    /** {@code /teammate on|off}: server-wide toggle for the open-menu key. */
+    public static void setMenuKeyEnabled(ServerPlayer operator, boolean enabled) {
+        TeamSavedData.get(operator.server).setMenuKeyEnabled(enabled);
+        operator.sendSystemMessage(Component.literal(enabled
+                        ? "Team menu key enabled: players can open the menu with the key again."
+                        : "Team menu key disabled: players must use a Team Tool item to open the menu.")
+                .withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.YELLOW));
+    }
+
+    /** True if the stack is a Team Tool (right-clicking it opens the team menu). */
+    public static boolean isTeamTool(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+        return data != null && data.contains(TOOL_MARKER);
+    }
+
+    /**
+     * {@code /itemteam}: turns the item in the player's main hand into a Team Tool
+     * without consuming or replacing it — a marker component plus a gold name so it
+     * reads as the team-creation tool.
+     */
+    public static void makeHeldItemTeamTool(ServerPlayer player) {
+        ItemStack stack = player.getMainHandItem();
+        if (stack.isEmpty()) {
+            error(player, "Hold an item in your main hand to turn it into a Team Tool.");
+            return;
+        }
+        if (isTeamTool(stack)) {
+            error(player, "That item is already a Team Tool.");
+            return;
+        }
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, existing -> existing.putBoolean(TOOL_MARKER, true));
+        stack.set(DataComponents.CUSTOM_NAME,
+                Component.literal("Team Tool").withStyle(ChatFormatting.GOLD));
+        player.sendSystemMessage(Component.literal("This item is now a Team Tool. Right-click it to open the team menu.")
+                .withStyle(ChatFormatting.GREEN));
     }
 
     private static void syncTeamMembers(MinecraftServer server, TeamSavedData.TeamInfo info) {

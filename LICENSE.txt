@@ -1,0 +1,29 @@
+Teammate - Advanced Team Combat
+Copyright (c) FIATAKE and Fragment Star. All Rights Reserved (ARR).
+
+This mod, including its compiled binaries, assets, and source code
+(collectively, the "Software"), is proprietary and is the exclusive property
+of its authors, FIATAKE and Fragment Star.
+
+ALL RIGHTS RESERVED.
+
+Without the express prior written permission of the authors, you MAY NOT, under
+any circumstances:
+
+  1. Reverse engineer, decompile, disassemble, deobfuscate, or otherwise attempt
+     to derive the source code or internal structure of the Software.
+  2. Extract, copy, or reuse any part of the Software, including code, assets,
+     textures, or data.
+  3. Modify, adapt, translate, or create derivative works based on the Software.
+  4. Redistribute, sublicense, sell, rent, lease, or otherwise make the Software
+     available to any third party.
+  5. Remove, alter, or obscure this copyright notice or any authorship or
+     attribution information.
+
+No license or right is granted by implication, estoppel, or otherwise. All
+rights not expressly granted herein are reserved by the authors.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES, OR
+OTHER LIABILITY ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE
+USE OR OTHER DEALINGS IN THE SOFTWARE.

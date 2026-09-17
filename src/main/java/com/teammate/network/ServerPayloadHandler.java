@@ -62,6 +62,12 @@ public final class ServerPayloadHandler {
         }
     }
 
+    public static void handleRequestOpenMenu(final TeamPayloads.RequestOpenMenu payload, final IPayloadContext context) {
+        if (context.player() instanceof ServerPlayer player) {
+            TeamManager.requestOpenMenu(player);
+        }
+    }
+
     public static void handleBannerState(final TeamPayloads.PacketBannerState payload, final IPayloadContext context) {
         if (context.player() instanceof ServerPlayer player) {
             // authenticated by connection; only the toggle bit matters client -> server

@@ -37,12 +37,15 @@ public final class TeamHudOverlay {
     private static final int MUTED = 0xFF616161;
     private static final int BAR_BG = 0xFF2C2C2C;
 
+    /** Player toggle (Toggle Team HUD key): hides the overlay to keep the screen uncluttered. */
+    public static boolean visible = true;
+
     private TeamHudOverlay() {
     }
 
     public static void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
-        if (!ClientTeamData.inTeam || ClientTeamData.members.isEmpty() || mc.player == null) {
+        if (!visible || !ClientTeamData.inTeam || ClientTeamData.members.isEmpty() || mc.player == null) {
             return;
         }
         if (mc.options.hideGui || mc.getDebugOverlay().showDebugScreen()) {
